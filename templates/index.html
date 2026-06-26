@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study Buddy — AI Quiz Generator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <h1>Study Buddy</h1>
+    <p>Upload a PDF or paste a video URL to generate a quiz.</p>
+
+    <form id="quizForm">
+      <div class="field">
+        <label for="pdf">PDF</label>
+        <input type="file" id="pdf" name="pdf" accept=".pdf" />
+      </div>
+
+      <div class="field">
+        <label for="url">Video URL</label>
+        <input type="url" id="url" name="url" placeholder="https://youtube.com/watch?v=..." />
+      </div>
+
+      <button type="submit">Generate Quiz</button>
+    </form>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('quizForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = new FormData(form);
+      const res = await fetch('/quiz', { method: 'POST', body: data });
+      const json = await res.json();
+      document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(json, null, 2) + '</pre>';
+    });
+  </script>
+</body>
+</html>
