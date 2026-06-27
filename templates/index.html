@@ -155,8 +155,9 @@
           resultEl.querySelectorAll('input[name="q' + qIdx + '"]').forEach(input => input.disabled = true);
           btn.disabled = true;
 
-          if (!state.counted || state.counted[qIdx]) return;
-          (state.counted = state.counted || {})[qIdx] = true;
+          if (state.counted && state.counted[qIdx]) return;
+          if (!state.counted) state.counted = {};
+          state.counted[qIdx] = true;
           state.checked = (state.checked || 0) + 1;
           if (isCorrect) state.correct = (state.correct || 0) + 1;
           const scoreEl = document.getElementById('scoreboard');
