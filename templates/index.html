@@ -117,11 +117,13 @@
             fb.className = 'feedback error';
             return;
           }
-          if (chosen.value === qData.answer) {
+          const chosenLetter = (chosen.value || '').trim().charAt(0).toUpperCase();
+          const answerLetter = (qData.answer || '').trim().charAt(0).toUpperCase();
+          if (chosenLetter && answerLetter && chosenLetter === answerLetter) {
             fb.textContent = 'Correct!';
             fb.className = 'feedback ok';
           } else {
-            fb.textContent = 'Wrong. Correct: ' + qData.answer;
+            fb.textContent = 'Wrong. Correct: ' + (qData.answer || '').trim();
             fb.className = 'feedback error';
           }
         });
