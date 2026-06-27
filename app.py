@@ -4,13 +4,12 @@ import fitz  # PyMuPDF
 import yt_dlp
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
+from groq import Groq
 
 load_dotenv()
-API_KEY = os.getenv('GOOGLE_API_KEY')
+API_KEY = os.getenv('GROQ_API_KEY')
 if not API_KEY:
-    raise RuntimeError('Missing GOOGLE_API_KEY in environment')
+    raise RuntimeError('Missing GROQ_API_KEY in environment')
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', os.urandom(24).hex())
@@ -20,7 +19,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 STORE_DIR = 'text_store'
 os.makedirs(STORE_DIR, exist_ok=True)
 
-client = genai.Client(api_key=API_KEY)
+groq_client = Groq(api_key=API_KEY)
 
 
 def save_text(text: str) -> str:
@@ -122,7 +121,11 @@ def url_input():
         return jsonify({'error': f'URL fetch failed: {str(e)}'}), 500
 
     token = save_text(text[:8000])
-    return jsonify({'text': text[:4000] + ('...' if len(text) > 4000 else text), 'token': token, 'ready': True})
+    return jsonify({
+        'text': text[:4000] + ('...' if len(text) > 4000 else text),
+        'token': token,
+        'ready': True,
+    })
 
 
 @app.route('/quiz', methods=['POST'])
@@ -136,16 +139,17 @@ def generate_quiz():
     prompt = (
         'You are a study quiz generator. Create 6 multiple-choice questions from the text below. '
         'For each question, provide 4 options and mark the correct answer. '
-        'Return JSON like: '
+        'Return ONLY valid JSON like: '
         '[{"q":"...","options":["A","B","C","D"],"answer":"..."}]\n\n'
         f'TEXT:\n{text}'
     )
     try:
-        response = client.models.generate_content(
-            model='gemini-1.5-flash',
-            contents=prompt,
+        completion = groq_client.chat.completions.create(
+            model='llama-3.3-70b-versatile',
+            messages=[{'role': 'user', 'content': prompt}],
+            temperature=0.3,
         )
-        quiz = response.text or '[]'
+        quiz = (completion.choices[0].message.content or '[]').strip()
     except Exception as e:
         return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
 
