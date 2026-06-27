@@ -72,6 +72,12 @@ def upload():
             os.remove(save_path)
 
     token = save_text(text[:8000])
+    for old in os.listdir(STORE_DIR):
+        if old.endswith('.txt') and old != f'{token}.txt':
+            try:
+                os.remove(os.path.join(STORE_DIR, old))
+            except OSError:
+                pass
     return jsonify({
         'filename': file.filename,
         'text': text[:4000] + ('...' if len(text) > 4000 else ''),
@@ -132,7 +138,6 @@ def generate_quiz():
     except Exception as e:
         return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
 
-    delete_text(token)
     return jsonify({'quiz': quiz})
 
 
