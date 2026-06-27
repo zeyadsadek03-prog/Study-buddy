@@ -1,10 +1,12 @@
 import os
 import uuid
+import json
+import tempfile
 import fitz  # PyMuPDF
 import yt_dlp
+import requests
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
-from groq import Groq
 
 load_dotenv()
 API_KEY = os.getenv('GROQ_API_KEY')
@@ -18,8 +20,6 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 STORE_DIR = 'text_store'
 os.makedirs(STORE_DIR, exist_ok=True)
-
-groq_client = Groq(api_key=API_KEY)
 
 
 def save_text(text: str) -> str:
@@ -114,7 +114,6 @@ def url_input():
                         if sub_url:
                             break
                 if sub_url:
-                    import requests
                     r = requests.get(sub_url, timeout=20)
                     text = r.text or ''
     except Exception as e:
@@ -144,12 +143,22 @@ def generate_quiz():
         f'TEXT:\n{text}'
     )
     try:
-        completion = groq_client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
-            messages=[{'role': 'user', 'content': prompt}],
-            temperature=0.3,
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={
+                'Authorization': f'Bearer {API_KEY}',
+                'Content-Type': 'application/json',
+            },
+            json={
+                'model': 'llama-3.3-70b-versatile',
+                'messages': [{'role': 'user', 'content': prompt}],
+                'temperature': 0.3,
+            },
+            timeout=30,
         )
-        quiz = (completion.choices[0].message.content or '[]').strip()
+        resp.raise_for_status()
+        payload = resp.json()
+        quiz = payload['choices'][0]['message']['content'].strip()
     except Exception as e:
         return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
 
