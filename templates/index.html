@@ -8,25 +8,65 @@
 </head>
 <body>
   <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
-      <h1>Study Buddy</h1>
-      <button type="button" id="themeToggle" class="theme-toggle">Light</button>
-    </div>
-    <p>Upload a PDF. Source loads automatically — just click <strong>Generate quiz</strong>.</p>
+    <header>
+      <div class="brand">
+        <h1>Study Buddy</h1>
+        <span class="tagline">AI Quiz</span>
+      </div>
+      <button type="button" id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        </svg>
+      </button>
+    </header>
 
-    <form id="sourceForm">
-      <div class="field">
-        <label for="pdf">PDF</label>
+    <p class="intro">
+      Upload a PDF — a textbook chapter, research paper, or study guide — and Study Buddy
+      will generate a multiple-choice quiz to test your understanding of the material.
+    </p>
+
+    <form id="sourceForm" onsubmit="return false;">
+      <div class="dropzone" id="dropZone">
         <input type="file" id="pdf" name="pdf" accept=".pdf" />
+        <div class="icon-box muted" id="uploadIcon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+        </div>
+        <div class="dropzone-text">
+          <p class="title">Drop your PDF here</p>
+          <p class="sub">or click to browse files</p>
+        </div>
       </div>
 
-      <div class="actions">
-        <button type="button" id="quizBtn">Generate quiz</button>
-      </div>
+      <button type="button" id="quizBtn" class="primary-btn" style="margin-top: 16px;" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="12" y1="18" x2="12" y2="12" />
+          <line x1="9" y1="15" x2="15" y2="15" />
+        </svg>
+        Generate quiz
+      </button>
     </form>
 
     <div id="status"></div>
-    <div id="result"></div>
+
+    <div id="result">
+      <div class="empty" id="emptyState">
+        <div class="icon-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <p>Your quiz will appear here after you upload a PDF and click Generate.</p>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -34,25 +74,86 @@
     const resultEl = document.getElementById('result');
     const quizBtn = document.getElementById('quizBtn');
     const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const dropZone = document.getElementById('dropZone');
+    const uploadIcon = document.getElementById('uploadIcon');
+    const emptyState = document.getElementById('emptyState');
+    const pdfInput = document.getElementById('pdf');
     let currentToken = '';
     let sourceReady = false;
+    let currentFile = null;
 
-    (function applySavedTheme() {
+    function setTheme(dark) {
+      document.documentElement.classList.toggle('dark', dark);
+      const sun = '<circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />';
+      const moon = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />';
+      themeIcon.innerHTML = dark ? moon : sun;
+      localStorage.setItem('study-buddy-theme', dark ? 'dark' : 'light');
+    }
+
+    (function initTheme() {
       const saved = localStorage.getItem('study-buddy-theme');
-      if (saved === 'light') {
-        document.documentElement.classList.add('light');
-        themeToggle.textContent = 'Dark';
-      } else {
-        document.documentElement.classList.remove('light');
-        themeToggle.textContent = 'Light';
-      }
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(saved ? saved === 'dark' : prefersDark);
     })();
 
     themeToggle.addEventListener('click', () => {
-      const isLight = document.documentElement.classList.toggle('light');
-      localStorage.setItem('study-buddy-theme', isLight ? 'light' : 'dark');
-      themeToggle.textContent = isLight ? 'Dark' : 'Light';
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(!isDark);
     });
+
+    function updateDropZone(file) {
+      if (file) {
+        dropZone.classList.add('has-file');
+        uploadIcon.className = 'icon-box primary';
+        uploadIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+        const text = dropZone.querySelector('.dropzone-text');
+        text.innerHTML = '<p class="title">' + escapeHtml(file.name) + '</p><p class="sub file-meta">' + (file.size / 1024).toFixed(0) + ' KB · PDF</p><p class="change-hint">Click to change file</p>';
+      } else {
+        dropZone.classList.remove('has-file');
+        uploadIcon.className = 'icon-box muted';
+        uploadIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+        const text = dropZone.querySelector('.dropzone-text');
+        text.innerHTML = '<p class="title">Drop your PDF here</p><p class="sub">or click to browse files</p>';
+      }
+    }
+
+    pdfInput.addEventListener('change', (e) => {
+      const file = e.target.files[0] || null;
+      currentFile = file;
+      updateDropZone(file);
+      if (file) {
+        loadSource();
+      } else {
+        setSourceMissing();
+      }
+    });
+
+    async function loadSource() {
+      if (!currentFile) {
+        statusEl.textContent = 'Please choose a PDF first.';
+        statusEl.className = 'status error';
+        setSourceMissing();
+        return;
+      }
+      statusEl.textContent = 'Loading…';
+      statusEl.className = 'status loading';
+      const formData = new FormData();
+      formData.append('pdf', currentFile);
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load source');
+        currentToken = data.token || '';
+        statusEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Source loaded.';
+        statusEl.className = 'status success';
+        setSourceReady();
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + err.message;
+        statusEl.className = 'status error';
+        setSourceMissing();
+      }
+    }
 
     function setSourceReady() {
       sourceReady = true;
@@ -64,35 +165,14 @@
       quizBtn.disabled = true;
     }
 
-    async function loadSource() {
-      statusEl.textContent = 'Loading...';
-      const form = document.getElementById('sourceForm');
-      const formData = new FormData(form);
-      const hasFile = formData.get('pdf').size > 0;
-      if (!hasFile) {
-        statusEl.textContent = 'Please choose a PDF first.';
-        setSourceMissing();
-        return;
-      }
-      try {
-        const res = await fetch('/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load source');
-        currentToken = data.token || '';
-        statusEl.textContent = 'Source loaded.';
-        setSourceReady();
-      } catch (err) {
-        statusEl.textContent = 'Error: ' + err.message;
-        setSourceMissing();
-      }
-    }
-
     async function generateQuiz() {
       if (!sourceReady) {
         statusEl.textContent = 'Please upload a PDF first.';
+        statusEl.className = 'status error';
         return;
       }
-      statusEl.textContent = 'Generating quiz...';
+      statusEl.innerHTML = '<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Generating quiz…';
+      statusEl.className = 'status loading';
       try {
         const res = await fetch('/quiz', {
           method: 'POST',
@@ -102,52 +182,92 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to generate quiz');
         renderQuiz(JSON.parse(data.quiz || '[]'));
-        statusEl.textContent = 'Quiz ready.';
+        statusEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Quiz ready.';
+        statusEl.className = 'status success';
       } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
+        statusEl.className = 'status error';
       }
     }
 
+    quizBtn.addEventListener('click', generateQuiz);
+
     function renderQuiz(quiz) {
       if (!Array.isArray(quiz) || !quiz.length) {
-        resultEl.innerHTML = '<p>No quiz generated.</p>';
+        resultEl.innerHTML = '<p style="text-align:center;color:var(--muted-foreground);font-size:14px;">No quiz generated.</p>';
         return;
       }
       let html = '<div class="quiz">';
+      html += '<div class="divider"><span>' + quiz.length + ' Questions</span></div>';
       quiz.forEach((q, i) => {
-        html += '<div class="question">';
-        html += '<p><strong>' + (i + 1) + '.</strong> ' + escapeHtml(q.q) + '</p>';
-        (q.options || []).forEach((opt, idx) => {
-          html += '<label><input type="radio" name="q' + i + '" value="' + escapeHtml(opt) + '" /> ' + escapeHtml(opt) + '</label><br />';
-        });
-        html += '<button type="button" class="check" data-q="' + i + '">Check</button>';
-        html += '<span class="feedback" id="feedback-' + i + '"></span>';
+        html += '<article class="question-card">';
+        html += '<div class="question-header">';
+        html += '<span class="number">' + (i + 1) + '</span>';
+        html += '<p class="question-text">' + escapeHtml(q.q) + '</p>';
         html += '</div>';
+        html += '<div class="options" id="options-' + i + '">';
+        (q.options || []).forEach((opt, idx) => {
+          html += '<label class="option" data-q="' + i + '" data-opt="' + escapeHtml(opt) + '">';
+          html += '<input type="radio" name="q' + i + '" value="' + escapeHtml(opt) + '" />';
+          html += '<span class="option-label">' + escapeHtml(opt) + '</span>';
+          html += '</label>';
+        });
+        html += '</div>';
+        html += '<div class="card-footer">';
+        html += '<div class="feedback" id="feedback-' + i + '"></div>';
+        html += '<button type="button" class="check-btn" data-q="' + i + '">Check</button>';
+        html += '</div>';
+        html += '</article>';
       });
       html += '</div>';
       resultEl.innerHTML = html;
 
-      resultEl.querySelectorAll('.check').forEach(btn => {
+      resultEl.querySelectorAll('.option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          const qIdx = opt.dataset.q;
+          const card = opt.closest('.question-card');
+          if (card.querySelector('.option.correct, .option.wrong')) return;
+          card.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          const input = opt.querySelector('input[type="radio"]');
+          if (input) input.checked = true;
+        });
+      });
+
+      resultEl.querySelectorAll('.check-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const qIdx = btn.dataset.q;
-          const chosen = resultEl.querySelector('input[name="q' + qIdx + '"]:checked');
+          const qData = quiz[qIdx];
+          const card = btn.closest('.question-card');
+          const options = card.querySelectorAll('.option');
+          const selected = card.querySelector('.option.selected input[type="radio"]');
           const fb = document.getElementById('feedback-' + qIdx);
-          if (!chosen) {
-            fb.textContent = 'Please choose an answer.';
-            fb.className = 'feedback error';
+          if (!selected) {
+            fb.innerHTML = 'Please choose an answer.';
+            fb.className = 'feedback wrong';
             return;
           }
-          const chosenLetter = (chosen.value || '').trim().charAt(0).toUpperCase();
-          const answerLetter = (quiz[qIdx].answer || '').trim().charAt(0).toUpperCase();
+          const chosenLetter = (selected.value || '').trim().charAt(0).toUpperCase();
+          const answerLetter = (qData.answer || '').trim().charAt(0).toUpperCase();
           const isCorrect = chosenLetter && answerLetter && chosenLetter === answerLetter;
+
+          options.forEach(opt => {
+            const optLetter = (opt.dataset.opt || '').trim().charAt(0).toUpperCase();
+            if (optLetter === answerLetter) {
+              opt.classList.add('correct');
+            } else if (opt.classList.contains('selected') && !isCorrect) {
+              opt.classList.add('wrong');
+            }
+            opt.style.pointerEvents = 'none';
+          });
+
           if (isCorrect) {
-            fb.textContent = 'Correct!';
-            fb.className = 'feedback ok';
+            fb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Correct — well done!';
+            fb.className = 'feedback correct';
           } else {
-            fb.textContent = 'Wrong. Correct: ' + (quiz[qIdx].answer || '').trim();
-            fb.className = 'feedback error';
+            fb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Incorrect — review the source material.';
+            fb.className = 'feedback wrong';
           }
-          resultEl.querySelectorAll('input[name="q' + qIdx + '"]').forEach(input => input.disabled = true);
           btn.disabled = true;
         });
       });
@@ -162,10 +282,6 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
     }
-
-    document.getElementById('pdf').addEventListener('change', loadSource);
-    document.getElementById('quizBtn').addEventListener('click', generateQuiz);
-    setSourceMissing();
   </script>
 </body>
 </html>
