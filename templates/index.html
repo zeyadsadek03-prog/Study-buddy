@@ -51,6 +51,16 @@
         </div>
       </div>
 
+      <div class="difficulty-row">
+        <span class="difficulty-label">Lens</span>
+        <div class="difficulty-options" id="lensOptions">
+          <button type="button" class="difficulty-btn active" data-lens="default">Default</button>
+          <button type="button" class="difficulty-btn" data-lens="definitions">Definitions</button>
+          <button type="button" class="difficulty-btn" data-lens="examples">Examples</button>
+          <button type="button" class="difficulty-btn" data-lens="exam">Exam</button>
+        </div>
+      </div>
+
       <button type="button" id="quizBtn" class="primary-btn" style="margin-top: 16px;" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -92,7 +102,24 @@
     let sourceReady = false;
     let currentFile = null;
     let currentDifficulty = 'easy';
+    let currentLens = 'default';
     let hasGenerated = false;
+
+    function setLens(lens) {
+      currentLens = lens;
+      document.querySelectorAll('#lensOptions .difficulty-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lens === lens);
+      });
+      if (hasGenerated) {
+        updateQuizBtnLabel();
+      }
+    }
+
+    document.getElementById('lensOptions').addEventListener('click', (e) => {
+      const btn = e.target.closest('.difficulty-btn');
+      if (!btn) return;
+      setLens(btn.dataset.lens);
+    });
 
     function setDifficulty(difficulty) {
       currentDifficulty = difficulty;
@@ -212,7 +239,7 @@
         const res = await fetch('/quiz', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: currentToken, difficulty: currentDifficulty }),
+          body: JSON.stringify({ token: currentToken, difficulty: currentDifficulty, lens: currentLens }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to generate quiz');

@@ -93,6 +93,9 @@ def generate_quiz():
     difficulty = (data.get('difficulty') or 'easy').lower()
     if difficulty not in {'easy', 'medium', 'hard'}:
         difficulty = 'easy'
+    lens = (data.get('lens') or 'default').lower()
+    if lens not in {'default', 'definitions', 'examples', 'exam'}:
+        lens = 'default'
 
     text = load_text(token) if token else ''
     if not text:
@@ -111,12 +114,22 @@ def generate_quiz():
         'medium': 'Focus on interpretation and connecting ideas across the text.',
         'hard': 'Focus on inference, comparison, and deeper analysis beyond explicit statements.',
     }
+    lens_instructions = {
+        'default': '',
+        'definitions': 'Prioritize key terms, acronyms, and conceptual definitions.',
+        'examples': 'Prioritize applied scenarios, use cases, and concrete examples.',
+        'exam': 'Mimic a university exam: include plausible distractors and avoid trivial questions.',
+    }
     prompt = (
         base_prompt
         + '\n\nDifficulty: '
         + difficulty.upper()
         + '. '
         + difficulty_instructions.get(difficulty, difficulty_instructions['easy'])
+        + '\nLens: '
+        + lens.upper()
+        + '. '
+        + (lens_instructions.get(lens, '') or 'Keep questions balanced and directly based on the text.')
     )
     try:
         resp = requests.post(
