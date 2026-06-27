@@ -9,9 +9,9 @@
 <body>
   <div class="container">
     <h1>Study Buddy</h1>
-    <p>Upload a PDF or paste a video URL to generate a quiz.</p>
+    <p>Upload a PDF or paste a video URL, then generate a quiz.</p>
 
-    <form id="quizForm">
+    <form id="sourceForm">
       <div class="field">
         <label for="pdf">PDF</label>
         <input type="file" id="pdf" name="pdf" accept=".pdf" />
@@ -19,24 +19,125 @@
 
       <div class="field">
         <label for="url">Video URL</label>
-        <input type="url" id="url" name="url" placeholder="https://youtube.com/watch?v=..." />
+        <input type="url" id="url" name="url" placeholder="https://..." />
       </div>
 
-      <button type="submit">Generate Quiz</button>
+      <div class="actions">
+        <button type="button" id="loadBtn">Load source</button>
+        <button type="button" id="quizBtn">Generate quiz</button>
+      </div>
     </form>
 
+    <div id="status"></div>
+    <div id="preview"></div>
     <div id="result"></div>
   </div>
 
   <script>
-    const form = document.getElementById('quizForm');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const data = new FormData(form);
-      const res = await fetch('/quiz', { method: 'POST', body: data });
-      const json = await res.json();
-      document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(json, null, 2) + '</pre>';
-    });
+    const statusEl = document.getElementById('status');
+    const previewEl = document.getElementById('preview');
+    const resultEl = document.getElementById('result');
+
+    async function loadSource() {
+      statusEl.textContent = 'Loading...';
+      const form = document.getElementById('sourceForm');
+      const formData = new FormData(form);
+      const hasFile = formData.get('pdf').size > 0;
+      const url = (formData.get('url') || '').trim();
+
+      try {
+        let res;
+        if (hasFile) {
+          res = await fetch('/upload', { method: 'POST', body: formData });
+        } else if (url) {
+          res = await fetch('/url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+          });
+        } else {
+          statusEl.textContent = 'Please choose a PDF or paste a URL first.';
+          return;
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load source');
+        previewEl.innerHTML = '<pre>' + escapeHtml(data.text) + '</pre>';
+        statusEl.textContent = 'Source loaded.';
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    async function generateQuiz() {
+      statusEl.textContent = 'Generating quiz...';
+      try {
+        const res = await fetch('/quiz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to generate quiz');
+        renderQuiz(JSON.parse(data.quiz || '[]'));
+        statusEl.textContent = 'Quiz ready.';
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    function renderQuiz(quiz) {
+      if (!Array.isArray(quiz) || !quiz.length) {
+        resultEl.innerHTML = '<p>No quiz generated.</p>';
+        return;
+      }
+      let html = '<div class="quiz">';
+      quiz.forEach((q, i) => {
+        html += '<div class="question">';
+        html += '<p><strong>' + (i + 1) + '.</strong> ' + escapeHtml(q.q) + '</p>';
+        (q.options || []).forEach((opt, idx) => {
+          html += '<label><input type="radio" name="q' + i + '" value="' + escapeHtml(opt) + '" /> ' + escapeHtml(opt) + '</label><br />';
+        });
+        html += '<button type="button" class="check" data-q="' + i + '">Check</button>';
+        html += '<span class="feedback" id="feedback-' + i + '"></span>';
+        html += '</div>';
+      });
+      html += '</div>';
+      resultEl.innerHTML = html;
+
+      resultEl.querySelectorAll('.check').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const qIdx = btn.dataset.q;
+          const chosen = resultEl.querySelector('input[name="' + qIdx + '"]:checked');
+          const fb = document.getElementById('feedback-' + qIdx);
+          const qData = quiz[qIdx];
+          if (!chosen) {
+            fb.textContent = 'Please choose an answer.';
+            fb.className = 'feedback error';
+            return;
+          }
+          if (chosen.value === qData.answer) {
+            fb.textContent = 'Correct!';
+            fb.className = 'feedback ok';
+          } else {
+            fb.textContent = 'Wrong. Correct: ' + qData.answer;
+            fb.className = 'feedback error';
+          }
+        });
+      });
+    }
+
+    function escapeHtml(text) {
+      if (text == null) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    document.getElementById('loadBtn').addEventListener('click', loadSource);
+    document.getElementById('quizBtn').addEventListener('click', generateQuiz);
   </script>
 </body>
 </html>

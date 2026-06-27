@@ -7,26 +7,21 @@
   --accent: #8c6f2f;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html, body {
   background: var(--bg);
-  color: var(--ink);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  margin: 0;
-  padding: 24px;
   background-image:
     linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
   background-size: 24px 24px;
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  margin: 0;
+  padding: 24px;
 }
 
-.container {
-  max-width: 780px;
-  margin: 0 auto;
-}
+.container { max-width: 780px; margin: 0 auto; }
 
 h1 {
   color: var(--line);
@@ -36,6 +31,8 @@ h1 {
   font-size: 22px;
   margin-bottom: 8px;
 }
+
+p { color: var(--ink); }
 
 .field {
   background: var(--panel);
@@ -64,6 +61,8 @@ input[type="url"] {
   outline: none;
 }
 
+.actions { display: flex; gap: 10px; }
+
 button {
   background: var(--line);
   color: var(--bg);
@@ -77,6 +76,60 @@ button {
   font-size: 13px;
 }
 
-button:hover {
-  filter: brightness(0.9);
+button:hover { filter: brightness(0.9); }
+
+#status {
+  margin: 16px 0 8px;
+  color: #f3c96d;
+  min-height: 20px;
 }
+
+#preview {
+  background: var(--panel);
+  border: 1px solid #2a2d35;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 8px 0 16px;
+  max-height: 260px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+#result { margin-top: 14px; }
+
+.quiz { display: grid; gap: 14px; }
+
+.question {
+  background: var(--panel);
+  border: 1px solid #2a2d35;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.question p { margin: 0 0 6px; font-size: 15px; }
+
+.question label {
+  display: block;
+  margin: 6px 0;
+  color: #e8e0c8;
+  cursor: pointer;
+}
+
+.question input[type="radio"] { margin-right: 10px; }
+
+.check {
+  background: #2a2d35;
+  color: var(--ink);
+  border-radius: 9999px;
+  padding: 10px 16px;
+  margin-top: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.feedback { display: inline-block; margin-left: 10px; font-size: 12px; }
+.feedback.ok { color: #8bc78b; }
+.feedback.error { color: #c97878; }
