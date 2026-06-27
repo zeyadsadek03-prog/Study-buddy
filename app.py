@@ -1,22 +1,49 @@
 import os
+import uuid
 import fitz  # PyMuPDF
 import yt_dlp
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
 load_dotenv()
-API_KEY=os.getenv('GOOGLE_API_KEY')
+API_KEY = os.getenv('GOOGLE_API_KEY')
 if not API_KEY:
     raise RuntimeError('Missing GOOGLE_API_KEY in environment')
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.getenv('FLASK_SECRET_KEY', os.urandom(24).hex())
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+STORE_DIR = 'text_store'
+os.makedirs(STORE_DIR, exist_ok=True)
+
 client = genai.Client(api_key=API_KEY)
+
+
+def save_text(text: str) -> str:
+    token = uuid.uuid4().hex
+    path = os.path.join(STORE_DIR, f'{token}.txt')
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(text)
+    return token
+
+
+def load_text(token: str) -> str | None:
+    path = os.path.join(STORE_DIR, f'{token}.txt')
+    if not os.path.exists(path):
+        return None
+    with open(path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+
+def delete_text(token: str) -> None:
+    path = os.path.join(STORE_DIR, f'{token}.txt')
+    if os.path.exists(path):
+        os.remove(path)
+
 
 @app.route('/')
 def index():
@@ -47,10 +74,11 @@ def upload():
         if os.path.exists(save_path):
             os.remove(save_path)
 
-    session['source_text'] = text[:8000]
+    token = save_text(text[:8000])
     return jsonify({
         'filename': file.filename,
         'text': text[:4000] + ('...' if len(text) > 4000 else ''),
+        'token': token,
         'ready': True,
     })
 
@@ -72,7 +100,6 @@ def url_input():
             'writeautomaticsub': True,
             'subtitleslangs': ['en', 'tr', 'ar'],
         }
-        import tempfile
         with tempfile.TemporaryDirectory() as tmpdir:
             ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(title)s.%(ext)s')
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -94,14 +121,15 @@ def url_input():
     except Exception as e:
         return jsonify({'error': f'URL fetch failed: {str(e)}'}), 500
 
-    session['source_text'] = text[:8000]
-    return jsonify({'text': text[:4000] + ('...' if len(text) > 4000 else text), 'ready': True})
+    token = save_text(text[:8000])
+    return jsonify({'text': text[:4000] + ('...' if len(text) > 4000 else text), 'token': token, 'ready': True})
 
 
 @app.route('/quiz', methods=['POST'])
 def generate_quiz():
     data = request.json or {}
-    text = session.get('source_text') or data.get('text') or ''
+    token = data.get('token') or ''
+    text = load_text(token) if token else ''
     if not text:
         return jsonify({'error': 'No source text. Upload a PDF or paste a URL first.'}), 400
 
@@ -121,6 +149,7 @@ def generate_quiz():
     except Exception as e:
         return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
 
+    delete_text(token)
     return jsonify({'quiz': quiz})
 
 

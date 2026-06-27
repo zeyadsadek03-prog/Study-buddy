@@ -37,6 +37,7 @@
     const statusEl = document.getElementById('status');
     const previewEl = document.getElementById('preview');
     const resultEl = document.getElementById('result');
+    let currentToken = '';
 
     async function loadSource() {
       statusEl.textContent = 'Loading...';
@@ -62,6 +63,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load source');
         previewEl.innerHTML = '<pre>' + escapeHtml(data.text) + '</pre>';
+        currentToken = data.token || '';
         statusEl.textContent = 'Source loaded.';
       } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
@@ -74,7 +76,7 @@
         const res = await fetch('/quiz', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ token: currentToken }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to generate quiz');
