@@ -109,7 +109,7 @@
       resultEl.querySelectorAll('.check').forEach(btn => {
         btn.addEventListener('click', () => {
           const qIdx = btn.dataset.q;
-          const chosen = resultEl.querySelector('input[name="' + qIdx + '"]:checked');
+          const chosen = resultEl.querySelector('input[name=\"q' + qIdx + '\"]:checked');
           const fb = document.getElementById('feedback-' + qIdx);
           const qData = quiz[qIdx];
           if (!chosen) {
