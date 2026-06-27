@@ -135,6 +135,11 @@ def generate_quiz():
         resp.raise_for_status()
         payload = resp.json()
         quiz = payload['choices'][0]['message']['content'].strip()
+    except requests.HTTPError as e:
+        status = getattr(getattr(e, 'response', None), 'status_code', None)
+        if status == 429:
+            return jsonify({'error': 'Too many requests — please wait a moment and try again.'}), 429
+        return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
 
