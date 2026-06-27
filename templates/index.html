@@ -106,7 +106,9 @@
         resultEl.innerHTML = '<p>No quiz generated.</p>';
         return;
       }
+      window.__quizState = { quiz, checked: 0, correct: 0 };
       let html = '<div class="quiz">';
+      html += '<div class="scoreboard" id="scoreboard">Score: 0 / 0</div>';
       quiz.forEach((q, i) => {
         html += '<div class="question">';
         html += '<p><strong>' + (i + 1) + '.</strong> ' + escapeHtml(q.q) + '</p>';
@@ -117,15 +119,17 @@
         html += '<span class="feedback" id="feedback-' + i + '"></span>';
         html += '</div>';
       });
+      html += '<div class="final-score" id="finalScore"></div>';
       html += '</div>';
       resultEl.innerHTML = html;
 
       resultEl.querySelectorAll('.check').forEach(btn => {
         btn.addEventListener('click', () => {
           const qIdx = btn.dataset.q;
+          const state = window.__quizState || {};
+          const qData = (state.quiz || [])[qIdx];
           const chosen = resultEl.querySelector('input[name="q' + qIdx + '"]:checked');
           const fb = document.getElementById('feedback-' + qIdx);
-          const qData = quiz[qIdx];
           if (!chosen) {
             fb.textContent = 'Please choose an answer.';
             fb.className = 'feedback error';
@@ -133,7 +137,8 @@
           }
           const chosenLetter = (chosen.value || '').trim().charAt(0).toUpperCase();
           const answerLetter = (qData.answer || '').trim().charAt(0).toUpperCase();
-          if (chosenLetter && answerLetter && chosenLetter === answerLetter) {
+          const isCorrect = chosenLetter && answerLetter && chosenLetter === answerLetter;
+          if (isCorrect) {
             fb.textContent = 'Correct!';
             fb.className = 'feedback ok';
           } else {
@@ -142,6 +147,20 @@
           }
           resultEl.querySelectorAll('input[name="q' + qIdx + '"]').forEach(input => input.disabled = true);
           btn.disabled = true;
+
+          if (!state.counted || state.counted[qIdx]) return;
+          (state.counted = state.counted || {})[qIdx] = true;
+          state.checked = (state.checked || 0) + 1;
+          if (isCorrect) state.correct = (state.correct || 0) + 1;
+          const scoreEl = document.getElementById('scoreboard');
+          if (scoreEl) scoreEl.textContent = 'Score: ' + state.correct + ' / ' + state.checked;
+          if (state.checked === state.quiz.length) {
+            const finalEl = document.getElementById('finalScore');
+            if (finalEl) {
+              finalEl.textContent = 'Final Score: ' + state.correct + ' / ' + state.quiz.length;
+              finalEl.className = 'final-score done';
+            }
+          }
         });
       });
     }
