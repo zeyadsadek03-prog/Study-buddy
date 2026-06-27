@@ -9,17 +9,12 @@
 <body>
   <div class="container">
     <h1>Study Buddy</h1>
-    <p>Upload a PDF or paste a video URL. Source loads automatically — just click <strong>Generate quiz</strong>.</p>
+    <p>Upload a PDF. Source loads automatically — just click <strong>Generate quiz</strong>.</p>
 
     <form id="sourceForm">
       <div class="field">
         <label for="pdf">PDF</label>
         <input type="file" id="pdf" name="pdf" accept=".pdf" />
-      </div>
-
-      <div class="field">
-        <label for="url">Video URL</label>
-        <input type="url" id="url" name="url" placeholder="https://..." />
       </div>
 
       <div class="actions">
@@ -53,22 +48,13 @@
       const form = document.getElementById('sourceForm');
       const formData = new FormData(form);
       const hasFile = formData.get('pdf').size > 0;
-      const url = (formData.get('url') || '').trim();
-
+      if (!hasFile) {
+        statusEl.textContent = 'Please choose a PDF first.';
+        setSourceMissing();
+        return;
+      }
       try {
-        let res;
-        if (hasFile) {
-          res = await fetch('/upload', { method: 'POST', body: formData });
-        } else if (url) {
-          res = await fetch('/url', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url }),
-          });
-        } else {
-          statusEl.textContent = 'Please choose a PDF or paste a URL first.';
-          return;
-        }
+        const res = await fetch('/upload', { method: 'POST', body: formData });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load source');
         currentToken = data.token || '';
@@ -82,7 +68,7 @@
 
     async function generateQuiz() {
       if (!sourceReady) {
-        statusEl.textContent = 'Please upload a PDF or paste a URL first.';
+        statusEl.textContent = 'Please upload a PDF first.';
         return;
       }
       statusEl.textContent = 'Generating quiz...';
@@ -176,11 +162,6 @@
     }
 
     document.getElementById('pdf').addEventListener('change', loadSource);
-    document.getElementById('url').addEventListener('input', (e) => {
-      if (e.target.value.trim().length > 0) {
-        loadSource();
-      }
-    });
     document.getElementById('quizBtn').addEventListener('click', generateQuiz);
     setSourceMissing();
   </script>

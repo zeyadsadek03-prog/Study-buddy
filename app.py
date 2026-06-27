@@ -2,8 +2,6 @@ import os
 import uuid
 import json
 import fitz  # PyMuPDF
-from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.formatters import TextFormatter
 import requests
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
@@ -82,41 +80,13 @@ def upload():
     })
 
 
-@app.route('/url', methods=['POST'])
-def url_input():
-    data = request.json or {}
-    url = data.get('url')
-    if not url:
-        return jsonify({'error': 'Missing URL'}), 400
-    video_id = url.split('v=')[1].split('&')[0] if 'v=' in url else url
-
-    text = ''
-    try:
-        ytt_api = YouTubeTranscriptApi()
-        transcript = ytt_api.fetch(video_id, languages=['en', 'tr', 'ar'])
-        formatter = TextFormatter()
-        text = formatter.format_transcript(transcript)
-    except Exception as e:
-        msg = str(e)
-        if 'blocking requests' in msg or 'IP' in msg or 'cookie' in msg.lower() or 'RequestBlocked' in msg or 'IPBlocked' in msg:
-            return jsonify({'error': 'YouTube transcript is unavailable from this server. Please upload a PDF instead.'}), 500
-        return jsonify({'error': f'URL fetch failed: {str(e)}'}), 500
-
-    token = save_text(text[:8000])
-    return jsonify({
-        'text': text[:4000] + ('...' if len(text) > 4000 else text),
-        'token': token,
-        'ready': True,
-    })
-
-
 @app.route('/quiz', methods=['POST'])
 def generate_quiz():
     data = request.json or {}
     token = data.get('token') or ''
     text = load_text(token) if token else ''
     if not text:
-        return jsonify({'error': 'No source text. Upload a PDF or paste a URL first.'}), 400
+        return jsonify({'error': 'No source text. Upload a PDF first.'}), 400
 
     prompt = (
         'You are a study quiz generator. Create 6 multiple-choice questions from the text below. '
