@@ -2,7 +2,7 @@
 Upload a PDF and generate AI-powered study quizzes.
 
 ## Live
-https://study-buddy-4pkp7awdr-zeyad4.vercel.app
+https://study-buddy-psi-tan.vercel.app/
 
 ## Run locally
 1. Copy `.env.example` to `.env` and set `GROQ_API_KEY`
