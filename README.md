@@ -1,1 +1,1 @@
-https://study-buddy-mfmh.onrender.com
+https://study-buddy-production-37c7.up.railway.app/
