@@ -142,7 +142,7 @@ def generate_quiz():
     )
     try:
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-1.5-flash-8b',
             contents=prompt,
         )
         quiz = response.text or '[]'
