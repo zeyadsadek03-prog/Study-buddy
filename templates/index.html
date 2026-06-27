@@ -9,7 +9,7 @@
 <body>
   <div class="container">
     <h1>Study Buddy</h1>
-    <p>Upload a PDF or paste a video URL, then generate a quiz.</p>
+    <p>Upload a PDF or paste a video URL. Source loads automatically — just click <strong>Generate quiz</strong>.</p>
 
     <form id="sourceForm">
       <div class="field">
@@ -23,7 +23,6 @@
       </div>
 
       <div class="actions">
-        <button type="button" id="loadBtn">Load source</button>
         <button type="button" id="quizBtn">Generate quiz</button>
       </div>
     </form>
@@ -37,7 +36,19 @@
     const statusEl = document.getElementById('status');
     const previewEl = document.getElementById('preview');
     const resultEl = document.getElementById('result');
+    const quizBtn = document.getElementById('quizBtn');
     let currentToken = '';
+    let sourceReady = false;
+
+    function setSourceReady() {
+      sourceReady = true;
+      quizBtn.disabled = false;
+    }
+
+    function setSourceMissing() {
+      sourceReady = false;
+      quizBtn.disabled = true;
+    }
 
     async function loadSource() {
       statusEl.textContent = 'Loading...';
@@ -65,12 +76,18 @@
         previewEl.innerHTML = '<pre>' + escapeHtml(data.text) + '</pre>';
         currentToken = data.token || '';
         statusEl.textContent = 'Source loaded.';
+        setSourceReady();
       } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
+        setSourceMissing();
       }
     }
 
     async function generateQuiz() {
+      if (!sourceReady) {
+        statusEl.textContent = 'Please upload a PDF or paste a URL first.';
+        return;
+      }
       statusEl.textContent = 'Generating quiz...';
       try {
         const res = await fetch('/quiz', {
@@ -140,8 +157,14 @@
         .replace(/'/g, '&#39;');
     }
 
-    document.getElementById('loadBtn').addEventListener('click', loadSource);
+    document.getElementById('pdf').addEventListener('change', loadSource);
+    document.getElementById('url').addEventListener('input', (e) => {
+      if (e.target.value.trim().length > 0) {
+        loadSource();
+      }
+    });
     document.getElementById('quizBtn').addEventListener('click', generateQuiz);
+    setSourceMissing();
   </script>
 </body>
 </html>
