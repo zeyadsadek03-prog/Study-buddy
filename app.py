@@ -1,9 +1,9 @@
 import os
 import uuid
 import json
-import tempfile
 import fitz  # PyMuPDF
-import yt_dlp
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.formatters import TextFormatter
 import requests
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
@@ -88,34 +88,14 @@ def url_input():
     url = data.get('url')
     if not url:
         return jsonify({'error': 'Missing URL'}), 400
+    video_id = url.split('v=')[1].split('&')[0] if 'v=' in url else url
 
     text = ''
     try:
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'skip_download': True,
-            'writesubtitles': True,
-            'writeautomaticsub': True,
-            'subtitleslangs': ['en', 'tr', 'ar'],
-        }
-        with tempfile.TemporaryDirectory() as tmpdir:
-            ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(title)s.%(ext)s')
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                subs = info.get('automatic_captions') or info.get('subtitles') or {}
-                sub_url = None
-                for lang in ['en', 'tr', 'ar']:
-                    if lang in subs:
-                        for fmt in subs[lang]:
-                            if fmt.get('ext') == 'vtt':
-                                sub_url = fmt.get('url')
-                                break
-                        if sub_url:
-                            break
-                if sub_url:
-                    r = requests.get(sub_url, timeout=20)
-                    text = r.text or ''
+        ytt_api = YouTubeTranscriptApi()
+        transcript = ytt_api.fetch(video_id, languages=['en', 'tr', 'ar'])
+        formatter = TextFormatter()
+        text = formatter.format_transcript(transcript)
     except Exception as e:
         return jsonify({'error': f'URL fetch failed: {str(e)}'}), 500
 
