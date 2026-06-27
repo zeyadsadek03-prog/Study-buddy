@@ -123,7 +123,7 @@
       resultEl.querySelectorAll('.check').forEach(btn => {
         btn.addEventListener('click', () => {
           const qIdx = btn.dataset.q;
-          const chosen = resultEl.querySelector('input[name=\"q' + qIdx + '\"]:checked');
+          const chosen = resultEl.querySelector('input[name="q' + qIdx + '"]:checked');
           const fb = document.getElementById('feedback-' + qIdx);
           const qData = quiz[qIdx];
           if (!chosen) {
@@ -140,6 +140,8 @@
             fb.textContent = 'Wrong. Correct: ' + (qData.answer || '').trim();
             fb.className = 'feedback error';
           }
+          resultEl.querySelectorAll('input[name="q' + qIdx + '"]').forEach(input => input.disabled = true);
+          btn.disabled = true;
         });
       });
     }
