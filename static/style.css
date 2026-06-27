@@ -226,6 +226,49 @@ h1 {
   cursor: not-allowed;
 }
 
+.difficulty-row {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.difficulty-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.difficulty-options {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.difficulty-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.difficulty-btn.active {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.difficulty-btn:hover:not(.active) {
+  color: var(--foreground);
+}
+
 .primary-btn svg {
   width: 16px;
   height: 16px;

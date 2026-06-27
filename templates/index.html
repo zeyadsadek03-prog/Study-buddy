@@ -42,6 +42,15 @@
         </div>
       </div>
 
+      <div class="difficulty-row">
+        <span class="difficulty-label">Difficulty</span>
+        <div class="difficulty-options" id="difficultyOptions">
+          <button type="button" class="difficulty-btn active" data-difficulty="easy">Easy</button>
+          <button type="button" class="difficulty-btn" data-difficulty="medium">Medium</button>
+          <button type="button" class="difficulty-btn" data-difficulty="hard">Hard</button>
+        </div>
+      </div>
+
       <button type="button" id="quizBtn" class="primary-btn" style="margin-top: 16px;" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -82,6 +91,20 @@
     let currentToken = '';
     let sourceReady = false;
     let currentFile = null;
+    let currentDifficulty = 'easy';
+
+    function setDifficulty(difficulty) {
+      currentDifficulty = difficulty;
+      document.querySelectorAll('.difficulty-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.difficulty === difficulty);
+      });
+    }
+
+    document.getElementById('difficultyOptions').addEventListener('click', (e) => {
+      const btn = e.target.closest('.difficulty-btn');
+      if (!btn) return;
+      setDifficulty(btn.dataset.difficulty);
+    });
 
     function setTheme(dark) {
       document.documentElement.classList.toggle('dark', dark);
@@ -177,7 +200,7 @@
         const res = await fetch('/quiz', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: currentToken }),
+          body: JSON.stringify({ token: currentToken, difficulty: currentDifficulty }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to generate quiz');

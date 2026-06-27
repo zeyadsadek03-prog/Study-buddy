@@ -84,16 +84,33 @@ def upload():
 def generate_quiz():
     data = request.json or {}
     token = data.get('token') or ''
+    difficulty = (data.get('difficulty') or 'easy').lower()
+    if difficulty not in {'easy', 'medium', 'hard'}:
+        difficulty = 'easy'
+
     text = load_text(token) if token else ''
     if not text:
         return jsonify({'error': 'No source text. Upload a PDF first.'}), 400
 
-    prompt = (
+    base_prompt = (
         'You are a study quiz generator. Create 6 multiple-choice questions from the text below. '
         'For each question, provide 4 options and mark the correct answer. '
         'Return ONLY valid JSON like: '
         '[{"q":"...","options":["A","B","C","D"],"answer":"..."}]\n\n'
         f'TEXT:\n{text}'
+    )
+
+    difficulty_instructions = {
+        'easy': 'Focus on direct recall and straightforward facts from the text.',
+        'medium': 'Focus on interpretation and connecting ideas across the text.',
+        'hard': 'Focus on inference, comparison, and deeper analysis beyond explicit statements.',
+    }
+    prompt = (
+        base_prompt
+        + '\n\nDifficulty: '
+        + difficulty.upper()
+        + '. '
+        + difficulty_instructions.get(difficulty, difficulty_instructions['easy'])
     )
     try:
         resp = requests.post(

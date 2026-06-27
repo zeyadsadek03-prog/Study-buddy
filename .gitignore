@@ -5,3 +5,4 @@ venv/
 uploads/
 instance/
 *.egg-info/
+text_store/
