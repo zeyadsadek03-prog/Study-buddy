@@ -58,7 +58,7 @@
           <line x1="12" y1="18" x2="12" y2="12" />
           <line x1="9" y1="15" x2="15" y2="15" />
         </svg>
-        Generate quiz
+        <span id="quizBtnLabel">Generate quiz</span>
       </button>
     </form>
 
@@ -92,6 +92,7 @@
     let sourceReady = false;
     let currentFile = null;
     let currentDifficulty = 'easy';
+    let quizGenerated = false;
 
     function setDifficulty(difficulty) {
       currentDifficulty = difficulty;
@@ -105,6 +106,12 @@
       if (!btn) return;
       setDifficulty(btn.dataset.difficulty);
     });
+
+    function updateQuizBtnLabel() {
+      const label = document.getElementById('quizBtnLabel');
+      if (!label) return;
+      label.textContent = quizGenerated ? 'Regenerate quiz' : 'Generate quiz';
+    }
 
     function setTheme(dark) {
       document.documentElement.classList.toggle('dark', dark);
@@ -171,6 +178,8 @@
         statusEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Source loaded.';
         statusEl.className = 'status success';
         setSourceReady();
+        quizGenerated = false;
+        updateQuizBtnLabel();
       } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
         statusEl.className = 'status error';
@@ -207,6 +216,8 @@
         renderQuiz(JSON.parse(data.quiz || '[]'));
         statusEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Quiz ready.';
         statusEl.className = 'status success';
+        quizGenerated = true;
+        updateQuizBtnLabel();
       } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
         statusEl.className = 'status error';
@@ -305,6 +316,7 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
     }
+    updateQuizBtnLabel();
   </script>
 </body>
 </html>
