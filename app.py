@@ -141,11 +141,22 @@ def generate_quiz():
         f'TEXT:\n{text}'
     )
     try:
-        response = client.models.generate_content(
-            model='gemini-1.5-flash-8b',
-            contents=prompt,
-        )
-        quiz = response.text or '[]'
+        MODELS = ['gemini-1.5-flash-8b', 'gemini-1.5-flash', 'gemini-1.0-pro']
+        last_error = None
+        quiz = '[]'
+        for model_name in MODELS:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                )
+                quiz = response.text or '[]'
+                break
+            except Exception as e:
+                last_error = e
+                continue
+        if not quiz or quiz == '[]':
+            raise last_error or RuntimeError('Quiz generation returned no data.')
     except Exception as e:
         return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
 
