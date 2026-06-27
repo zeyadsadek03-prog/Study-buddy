@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import sqlite3
 import fitz  # PyMuPDF
 import requests
 from flask import Flask, render_template, request, jsonify
@@ -13,39 +14,49 @@ if not API_KEY:
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', os.urandom(24).hex())
-app.config['UPLOAD_FOLDER'] = 'uploads'
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-STORE_DIR = 'text_store'
-os.makedirs(STORE_DIR, exist_ok=True)
+DB_PATH = os.environ.get('DB_PATH', 'study_buddy.db')
 
+def init_db() -> None:
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS documents (
+                token TEXT PRIMARY KEY,
+                text TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+
+def get_db() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def save_text(text: str) -> str:
     token = uuid.uuid4().hex
-    path = os.path.join(STORE_DIR, f'{token}.txt')
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(text)
+    with get_db() as conn:
+        conn.execute('INSERT INTO documents (token, text) VALUES (?, ?)', (token, text))
+        conn.commit()
     return token
 
-
 def load_text(token: str) -> str | None:
-    path = os.path.join(STORE_DIR, f'{token}.txt')
-    if not os.path.exists(path):
-        return None
-    with open(path, 'r', encoding='utf-8') as f:
-        return f.read()
-
+    with get_db() as conn:
+        cur = conn.execute('SELECT text FROM documents WHERE token = ?', (token,))
+        row = cur.fetchone()
+    return row['text'] if row else None
 
 def delete_text(token: str) -> None:
-    path = os.path.join(STORE_DIR, f'{token}.txt')
-    if os.path.exists(path):
-        os.remove(path)
+    with get_db() as conn:
+        conn.execute('DELETE FROM documents WHERE token = ?', (token,))
+        conn.commit()
 
+# Initialize DB on cold start / import
+init_db()
 
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -58,7 +69,9 @@ def upload():
     if not file.filename.lower().endswith('.pdf'):
         return jsonify({'error': 'Only PDF allowed'}), 400
 
-    save_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    if not os.path.exists('tmp'):
+        os.makedirs('tmp', exist_ok=True)
+    save_path = os.path.join('tmp', file.filename)
     file.save(save_path)
 
     try:
@@ -66,25 +79,20 @@ def upload():
         text = '\n'.join(page.get_text() for page in doc)
         doc.close()
     except Exception as e:
+        if os.path.exists(save_path):
+            os.remove(save_path)
         return jsonify({'error': f'PDF read failed: {str(e)}'}), 500
     finally:
         if os.path.exists(save_path):
             os.remove(save_path)
 
     token = save_text(text[:8000])
-    for old in os.listdir(STORE_DIR):
-        if old.endswith('.txt') and old != f'{token}.txt':
-            try:
-                os.remove(os.path.join(STORE_DIR, old))
-            except OSError:
-                pass
     return jsonify({
         'filename': file.filename,
         'text': text[:4000] + ('...' if len(text) > 4000 else ''),
         'token': token,
         'ready': True,
     })
-
 
 @app.route('/quiz', methods=['POST'])
 def generate_quiz():
@@ -105,8 +113,8 @@ def generate_quiz():
         'You are a study quiz generator. Create 6 multiple-choice questions from the text below. '
         'For each question, provide 4 options and mark the correct answer. '
         'Return ONLY valid JSON like: '
-        '[{"q":"...","options":["A","B","C","D"],"answer":"..."}]\n\n'
-        f'TEXT:\n{text}'
+        '[{"q":"...","options":["A","B","C","D"],"answer":"..."}]\\n\\n'
+        f'TEXT:\\n{text}'
     )
 
     difficulty_instructions = {
@@ -122,11 +130,11 @@ def generate_quiz():
     }
     prompt = (
         base_prompt
-        + '\n\nDifficulty: '
+        + '\\n\\nDifficulty: '
         + difficulty.upper()
         + '. '
         + difficulty_instructions.get(difficulty, difficulty_instructions['easy'])
-        + '\nLens: '
+        + '\\nLens: '
         + lens.upper()
         + '. '
         + (lens_instructions.get(lens, '') or 'Keep questions balanced and directly based on the text.')
@@ -157,7 +165,6 @@ def generate_quiz():
         return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
 
     return jsonify({'quiz': quiz})
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
