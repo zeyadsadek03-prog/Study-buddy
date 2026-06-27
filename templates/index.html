@@ -28,13 +28,11 @@
     </form>
 
     <div id="status"></div>
-    <div id="preview"></div>
     <div id="result"></div>
   </div>
 
   <script>
     const statusEl = document.getElementById('status');
-    const previewEl = document.getElementById('preview');
     const resultEl = document.getElementById('result');
     const quizBtn = document.getElementById('quizBtn');
     let currentToken = '';
@@ -73,7 +71,6 @@
         }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load source');
-        previewEl.innerHTML = '<pre>' + escapeHtml(data.text) + '</pre>';
         currentToken = data.token || '';
         statusEl.textContent = 'Source loaded.';
         setSourceReady();
