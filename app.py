@@ -97,6 +97,9 @@ def url_input():
         formatter = TextFormatter()
         text = formatter.format_transcript(transcript)
     except Exception as e:
+        msg = str(e)
+        if 'blocking requests' in msg or 'IP' in msg or 'cookie' in msg.lower() or 'RequestBlocked' in msg or 'IPBlocked' in msg:
+            return jsonify({'error': 'YouTube transcript is unavailable from this server. Please upload a PDF instead.'}), 500
         return jsonify({'error': f'URL fetch failed: {str(e)}'}), 500
 
     token = save_text(text[:8000])
