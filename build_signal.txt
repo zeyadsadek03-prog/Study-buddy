@@ -1,1 +1,0 @@
-render-build-test: trigger-clean-redeploy

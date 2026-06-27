@@ -3,20 +3,20 @@ import fitz  # PyMuPDF
 import yt_dlp
 from flask import Flask, render_template, request, jsonify, session
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 load_dotenv()
-API_KEY = os.getenv('GOOGLE_API_KEY')
+API_KEY=os.getenv('GOOGLE_API_KEY')
 if not API_KEY:
     raise RuntimeError('Missing GOOGLE_API_KEY in environment')
-genai.configure(api_key=API_KEY)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-model = genai.GenerativeModel('gemini-2.0-flash')
+client = genai.Client(api_key=API_KEY)
 
 @app.route('/')
 def index():
@@ -47,7 +47,6 @@ def upload():
         if os.path.exists(save_path):
             os.remove(save_path)
 
-    # Store extracted text for quiz generation
     session['source_text'] = text[:8000]
     return jsonify({
         'filename': file.filename,
@@ -63,7 +62,6 @@ def url_input():
     if not url:
         return jsonify({'error': 'Missing URL'}), 400
 
-    # For YouTube-like links, extract transcript safely
     text = ''
     try:
         ydl_opts = {
@@ -96,10 +94,8 @@ def url_input():
     except Exception as e:
         return jsonify({'error': f'URL fetch failed: {str(e)}'}), 500
 
-    # crude clean-ish preview
-    preview = (text[:4000] + '...') if len(text) > 4000 else text
     session['source_text'] = text[:8000]
-    return jsonify({'text': preview, 'ready': True})
+    return jsonify({'text': text[:4000] + ('...' if len(text) > 4000 else text), 'ready': True})
 
 
 @app.route('/quiz', methods=['POST'])
@@ -117,7 +113,10 @@ def generate_quiz():
         f'TEXT:\n{text}'
     )
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt,
+        )
         quiz = response.text or '[]'
     except Exception as e:
         return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
