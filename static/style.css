@@ -5,6 +5,17 @@
   --ink: #e8e0c8;
   --muted: #a89f7e;
   --accent: #8c6f2f;
+  --subtle-border: #2a2d35;
+}
+
+:root.light {
+  --bg: #f4f4ef;
+  --panel: #ffffff;
+  --line: #8c6f2f;
+  --ink: #1a1d23;
+  --muted: #5c5a54;
+  --accent: #b08d3e;
+  --subtle-border: #d6d3c8;
 }
 
 * { box-sizing: border-box; }
@@ -36,7 +47,7 @@ p { color: var(--ink); }
 
 .field {
   background: var(--panel);
-  border: 1px solid #2a2d35;
+  border: 1px solid var(--subtle-border);
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 14px;
@@ -61,7 +72,7 @@ input[type="url"] {
   outline: none;
 }
 
-.actions { display: flex; gap: 10px; }
+.actions { display: flex; gap: 10px; align-items: center; }
 
 button {
   background: var(--line);
@@ -86,7 +97,7 @@ button:hover { filter: brightness(0.9); }
 
 #preview {
   background: var(--panel);
-  border: 1px solid #2a2d35;
+  border: 1px solid var(--subtle-border);
   border-radius: 10px;
   padding: 12px;
   margin: 8px 0 16px;
@@ -103,7 +114,7 @@ button:hover { filter: brightness(0.9); }
 
 .question {
   background: var(--panel);
-  border: 1px solid #2a2d35;
+  border: 1px solid var(--subtle-border);
   border-radius: 10px;
   padding: 12px;
 }
@@ -113,14 +124,14 @@ button:hover { filter: brightness(0.9); }
 .question label {
   display: block;
   margin: 6px 0;
-  color: #e8e0c8;
+  color: var(--ink);
   cursor: pointer;
 }
 
 .question input[type="radio"] { margin-right: 10px; }
 
 .check {
-  background: #2a2d35;
+  background: var(--subtle-border);
   color: var(--ink);
   border-radius: 9999px;
   padding: 10px 16px;
@@ -133,3 +144,30 @@ button:hover { filter: brightness(0.9); }
 .feedback { display: inline-block; margin-left: 10px; font-size: 12px; }
 .feedback.ok { color: #8bc78b; }
 .feedback.error { color: #c97878; }
+
+.scoreboard {
+  background: var(--subtle-border);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.final-score {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 8px;
+}
+
+.theme-toggle {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--subtle-border);
+  border-radius: 9999px;
+  padding: 8px 14px;
+  font-size: 12px;
+}

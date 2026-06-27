@@ -8,7 +8,10 @@
 </head>
 <body>
   <div class="container">
-    <h1>Study Buddy</h1>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <h1>Study Buddy</h1>
+      <button type="button" id="themeToggle" class="theme-toggle">Light</button>
+    </div>
     <p>Upload a PDF. Source loads automatically — just click <strong>Generate quiz</strong>.</p>
 
     <form id="sourceForm">
@@ -30,8 +33,26 @@
     const statusEl = document.getElementById('status');
     const resultEl = document.getElementById('result');
     const quizBtn = document.getElementById('quizBtn');
+    const themeToggle = document.getElementById('themeToggle');
     let currentToken = '';
     let sourceReady = false;
+
+    (function applySavedTheme() {
+      const saved = localStorage.getItem('study-buddy-theme');
+      if (saved === 'light') {
+        document.documentElement.classList.add('light');
+        themeToggle.textContent = 'Dark';
+      } else {
+        document.documentElement.classList.remove('light');
+        themeToggle.textContent = 'Light';
+      }
+    })();
+
+    themeToggle.addEventListener('click', () => {
+      const isLight = document.documentElement.classList.toggle('light');
+      localStorage.setItem('study-buddy-theme', isLight ? 'light' : 'dark');
+      themeToggle.textContent = isLight ? 'Dark' : 'Light';
+    });
 
     function setSourceReady() {
       sourceReady = true;
