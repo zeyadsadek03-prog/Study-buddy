@@ -92,13 +92,16 @@
     let sourceReady = false;
     let currentFile = null;
     let currentDifficulty = 'easy';
-    let quizGenerated = false;
+    let hasGenerated = false;
 
     function setDifficulty(difficulty) {
       currentDifficulty = difficulty;
       document.querySelectorAll('.difficulty-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.difficulty === difficulty);
       });
+      if (hasGenerated) {
+        updateQuizBtnLabel();
+      }
     }
 
     document.getElementById('difficultyOptions').addEventListener('click', (e) => {
@@ -110,7 +113,7 @@
     function updateQuizBtnLabel() {
       const label = document.getElementById('quizBtnLabel');
       if (!label) return;
-      label.textContent = quizGenerated ? 'Regenerate quiz' : 'Generate quiz';
+      label.textContent = hasGenerated ? 'Regenerate quiz' : 'Generate quiz';
     }
 
     function setTheme(dark) {
@@ -178,7 +181,7 @@
         statusEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Source loaded.';
         statusEl.className = 'status success';
         setSourceReady();
-        quizGenerated = false;
+        hasGenerated = false;
         updateQuizBtnLabel();
       } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
@@ -216,8 +219,7 @@
         renderQuiz(JSON.parse(data.quiz || '[]'));
         statusEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Quiz ready.';
         statusEl.className = 'status success';
-        quizGenerated = true;
-        updateQuizBtnLabel();
+        hasGenerated = true;
       } catch (err) {
         statusEl.textContent = 'Error: ' + err.message;
         statusEl.className = 'status error';
