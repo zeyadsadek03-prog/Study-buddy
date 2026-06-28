@@ -88,16 +88,19 @@ def upload():
         if os.path.exists(save_path):
             os.remove(save_path)
 
-    token = uuid.uuid4().hex
-    kv = get_kv()
-    kv_set(token, text[:8000])
+    try:
+        token = uuid.uuid4().hex
+        kv = get_kv()
+        kv_set(token, text[:8000])
 
-    return jsonify({
-        'filename': file.filename,
-        'text': text[:4000] + ('...' if len(text) > 4000 else ''),
-        'token': token,
-        'ready': True,
-    })
+        return jsonify({
+            'filename': file.filename,
+            'text': text[:4000] + ('...' if len(text) > 4000 else ''),
+            'token': token,
+            'ready': True,
+        })
+    except Exception as e:
+        return jsonify({'error': f'KV write failed: {str(e)}'}), 500
 
 
 @app.route('/quiz', methods=['POST'])
