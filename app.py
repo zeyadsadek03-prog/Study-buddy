@@ -1,6 +1,8 @@
 import os
 import uuid
 import json
+import sqlite3
+import fitz
 import requests
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
@@ -13,47 +15,49 @@ if not API_KEY:
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', os.urandom(24).hex())
 
-# Lazy KV init using Vercel KV REST API
-_kv = None
+DB_PATH = os.environ.get('DB_PATH', 'study_buddy.db')
 
-def get_kv():
-    global _kv
-    if _kv is not None:
-        return _kv
-    url = os.getenv('KV_REST_API_URL')
-    token = os.getenv('KV_REST_API_TOKEN')
-    if not url or not token:
-        raise RuntimeError(
-            'Vercel KV is required. Add Vercel KV in your Vercel dashboard, redeploy, and set KV_REST_API_URL and KV_REST_API_TOKEN.'
-        )
-    _kv = {'url': url.rstrip('/'), 'token': token}
-    return _kv
 
-def kv_get(key: str):
-    kv = get_kv()
-    try:
-        r = requests.get(f"{kv['url']}/{key}", headers={'Authorization': f"Bearer {kv['token']}"}, timeout=10)
-        if r.status_code == 404:
-            return None
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        raise RuntimeError(f'KV read failed: {e}') from e
+def init_db() -> None:
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS documents (
+                token TEXT PRIMARY KEY,
+                text TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
 
-def kv_set(key: str, value, expire_seconds: int | None = None):
-    kv = get_kv()
-    headers = {
-        'Authorization': f'Bearer {kv["token"]}',
-        'Content-Type': 'application/json',
-    }
-    body = {'value': value}
-    if expire_seconds is not None:
-        body['expiration'] = expire_seconds
-    try:
-        r = requests.post(f"{kv['url']}/{key}", headers=headers, json=body, timeout=10)
-        r.raise_for_status()
-    except Exception as e:
-        raise RuntimeError(f'KV write failed: {e}') from e
+
+def get_db() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def save_text(text: str) -> str:
+    token = uuid.uuid4().hex
+    with get_db() as conn:
+        conn.execute('INSERT INTO documents (token, text) VALUES (?, ?)', (token, text))
+        conn.commit()
+    return token
+
+
+def load_text(token: str) -> str | None:
+    with get_db() as conn:
+        cur = conn.execute('SELECT text FROM documents WHERE token = ?', (token,))
+        row = cur.fetchone()
+    return row['text'] if row else None
+
+
+def delete_text(token: str) -> None:
+    with get_db() as conn:
+        conn.execute('DELETE FROM documents WHERE token = ?', (token,))
+        conn.commit()
+
+
+init_db()
 
 
 @app.route('/')
@@ -72,11 +76,12 @@ def upload():
     if not file.filename.lower().endswith('.pdf'):
         return jsonify({'error': 'Only PDF allowed'}), 400
 
-    save_path = os.path.join('/tmp', file.filename)
+    if not os.path.exists('tmp'):
+        os.makedirs('tmp', exist_ok=True)
+    save_path = os.path.join('tmp', file.filename)
     file.save(save_path)
 
     try:
-        import fitz
         doc = fitz.open(save_path)
         text = '\n'.join(page.get_text() for page in doc)
         doc.close()
@@ -89,10 +94,7 @@ def upload():
             os.remove(save_path)
 
     try:
-        token = uuid.uuid4().hex
-        kv = get_kv()
-        kv_set(token, text[:8000])
-
+        token = save_text(text[:8000])
         return jsonify({
             'filename': file.filename,
             'text': text[:4000] + ('...' if len(text) > 4000 else ''),
@@ -100,7 +102,7 @@ def upload():
             'ready': True,
         })
     except Exception as e:
-        return jsonify({'error': f'KV write failed: {str(e)}'}), 500
+        return jsonify({'error': f'Save failed: {str(e)}'}), 500
 
 
 @app.route('/quiz', methods=['POST'])
@@ -114,8 +116,7 @@ def generate_quiz():
     if lens not in {'default', 'definitions', 'examples', 'exam'}:
         lens = 'default'
 
-    kv = get_kv()
-    text = kv_get(token) or ''
+    text = load_text(token) if token else ''
     if not text:
         return jsonify({'error': 'No source text. Upload a PDF first.'}), 400
 
