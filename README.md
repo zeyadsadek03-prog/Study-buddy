@@ -1,1 +1,1 @@
-https://study-buddy-psi-tan.vercel.app/
+https://fiyatli.vercel.app/
