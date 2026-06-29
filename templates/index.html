@@ -98,9 +98,9 @@
     const uploadIcon = document.getElementById('uploadIcon');
     const emptyState = document.getElementById('emptyState');
     const pdfInput = document.getElementById('pdf');
-    let currentToken = '';
     let sourceReady = false;
     let currentFile = null;
+    let currentText = '';
     let currentDifficulty = 'easy';
     let currentLens = 'default';
     let hasGenerated = false;
@@ -204,7 +204,7 @@
         const res = await fetch('/upload', { method: 'POST', body: formData });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load source');
-        currentToken = data.token || '';
+        currentText = (data.text || '').trim();
         statusEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Source loaded.';
         statusEl.className = 'status success';
         setSourceReady();
@@ -224,6 +224,7 @@
 
     function setSourceMissing() {
       sourceReady = false;
+      currentText = '';
       quizBtn.disabled = true;
     }
 
@@ -239,7 +240,7 @@
         const res = await fetch('/quiz', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: currentToken, difficulty: currentDifficulty, lens: currentLens }),
+          body: JSON.stringify({ text: currentText, difficulty: currentDifficulty, lens: currentLens }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to generate quiz');

@@ -13,48 +13,6 @@ if not API_KEY:
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', os.urandom(24).hex())
 
-# Lazy KV init using Vercel KV REST API
-_kv = None
-
-def get_kv():
-    global _kv
-    if _kv is not None:
-        return _kv
-    url = os.getenv('KV_REST_API_URL')
-    token = os.getenv('KV_REST_API_TOKEN')
-    if not url or not token:
-        raise RuntimeError(
-            'Vercel KV is required. Add Vercel KV in your Vercel dashboard, redeploy, and set KV_REST_API_URL and KV_REST_API_TOKEN.'
-        )
-    _kv = {'url': url.rstrip('/'), 'token': token}
-    return _kv
-
-def kv_get(key: str):
-    kv = get_kv()
-    try:
-        r = requests.get(f"{kv['url']}/{key}", headers={'Authorization': f"Bearer {kv['token']}"}, timeout=10)
-        if r.status_code == 404:
-            return None
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        raise RuntimeError(f'KV read failed: {e}') from e
-
-def kv_set(key: str, value, expire_seconds: int | None = None):
-    kv = get_kv()
-    headers = {
-        'Authorization': f'Bearer {kv["token"]}',
-        'Content-Type': 'application/json',
-    }
-    body = {'value': value}
-    if expire_seconds is not None:
-        body['expiration'] = expire_seconds
-    try:
-        r = requests.post(f"{kv['url']}/{key}", headers=headers, json=body, timeout=10)
-        r.raise_for_status()
-    except Exception as e:
-        raise RuntimeError(f'KV write failed: {e}') from e
-
 
 @app.route('/')
 def index():
@@ -88,25 +46,17 @@ def upload():
         if os.path.exists(save_path):
             os.remove(save_path)
 
-    try:
-        token = uuid.uuid4().hex
-        kv = get_kv()
-        kv_set(token, text[:8000])
-
-        return jsonify({
-            'filename': file.filename,
-            'text': text[:4000] + ('...' if len(text) > 4000 else ''),
-            'token': token,
-            'ready': True,
-        })
-    except Exception as e:
-        return jsonify({'error': f'KV write failed: {str(e)}'}), 500
+    return jsonify({
+        'filename': file.filename,
+        'text': text[:8000],
+        'ready': True,
+    })
 
 
 @app.route('/quiz', methods=['POST'])
 def generate_quiz():
     data = request.json or {}
-    token = data.get('token') or ''
+    text = (data.get('text') or '').strip()
     difficulty = (data.get('difficulty') or 'easy').lower()
     if difficulty not in {'easy', 'medium', 'hard'}:
         difficulty = 'easy'
@@ -114,10 +64,6 @@ def generate_quiz():
     if lens not in {'default', 'definitions', 'examples', 'exam'}:
         lens = 'default'
 
-    try:
-        text = kv_get(token) or ''
-    except Exception as e:
-        return jsonify({'error': f'Storage read failed: {str(e)}'}), 500
     if not text:
         return jsonify({'error': 'No source text. Upload a PDF first.'}), 400
 
