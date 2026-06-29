@@ -114,8 +114,10 @@ def generate_quiz():
     if lens not in {'default', 'definitions', 'examples', 'exam'}:
         lens = 'default'
 
-    kv = get_kv()
-    text = kv_get(token) or ''
+    try:
+        text = kv_get(token) or ''
+    except Exception as e:
+        return jsonify({'error': f'Storage read failed: {str(e)}'}), 500
     if not text:
         return jsonify({'error': 'No source text. Upload a PDF first.'}), 400
 
